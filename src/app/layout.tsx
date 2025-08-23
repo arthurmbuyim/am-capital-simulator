@@ -66,30 +66,59 @@ export default function RootLayout({
             `,
           }}
         />
-        <style
-          dangerouslySetInnerHTML={{
-            __html: `
-              .custom-slider::-webkit-slider-thumb {
-                appearance: none;
-                height: 20px;
-                width: 20px;
-                border-radius: 50%;
-                background: #2563eb;
-                cursor: pointer;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-              }
-              .custom-slider::-moz-range-thumb {
-                height: 20px;
-                width: 20px;
-                border-radius: 50%;
-                background: #d4af37;
-                cursor: pointer;
-                border: none;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-              }
-            `,
-          }}
-        />
+        {/* Styles pour le slider */}
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            /* Réinitialiser tous les sliders */
+            input[type="range"] {
+              -webkit-appearance: none;
+              appearance: none;
+              width: 100%;
+              height: 8px;
+              border-radius: 5px;
+              background: #e5e7eb;
+              outline: none;
+            }
+            
+            /* Thumb Webkit (Chrome, Safari, Edge) */
+            input[type="range"]::-webkit-slider-thumb {
+              -webkit-appearance: none;
+              appearance: none;
+              height: 20px;
+              width: 20px;
+              border-radius: 50%;
+              background: #121f3e;  /* ← Votre couleur ici */
+              cursor: pointer;
+              border: 2px solid white;
+              box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            }
+            
+            /* Thumb Firefox */
+            input[type="range"]::-moz-range-thumb {
+              height: 20px;
+              width: 20px;
+              border-radius: 50%;
+              background: #121f3e;  /* ← Votre couleur ici */
+              cursor: pointer;
+              border: 2px solid white;
+              box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            }
+            
+            /* Track Firefox */
+            input[type="range"]::-moz-range-track {
+              width: 100%;
+              height: 8px;
+              background: #e5e7eb;
+              border-radius: 5px;
+              border: none;
+            }
+            
+            /* Focus */
+            input[type="range"]:focus::-webkit-slider-thumb {
+              box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.3);
+            }
+          `
+        }} />
       </head>
       <body className={`${inter.className} antialiased`}>
         <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">

@@ -26,13 +26,13 @@ const Header = () => {
             <a href="#simulator" className="text-am-navy-text hover:text-[#e90] transition-colors">
               Simulateur
             </a>
-            <a href="#about" className="text-am-navy-text hover:text-[#e90] transition-colors">
+            <a href="https://www.am-capital.fr/qui-sommes-nous" className="text-am-navy-text hover:text-[#e90] transition-colors">
               À propos
             </a>
-            <a href="#services" className="text-am-navy-text hover:text-[#e90] transition-colors">
+            <a href="https://www.am-capital.fr/notre-expertise" className="text-am-navy-text hover:text-[#e90] transition-colors">
               Services
             </a>
-            <a href="#contact" className="text-am-navy-text hover:text-[#e90] transition-colors">
+            <a href="#c" className="text-am-navy-text hover:text-[#e90] transition-colors">
               Contact
             </a>
           </nav>

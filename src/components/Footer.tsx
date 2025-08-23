@@ -9,7 +9,7 @@ const Footer = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Company Info */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2"  id='contact'>
             <div className="flex items-center space-x-3 mb-6">
               <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
                 <Building className="w-6 h-6 text-white" />
@@ -158,14 +158,14 @@ const Footer = () => {
             {/* Social Links */}
             <div className="flex space-x-4">
               <a
-                href="#"
+                href="https://www.linkedin.com/company/a-m-capital1/?viewAsMember=true"
                 className="text-gray-400 hover:text-[#e90] transition-colors"
                 aria-label="LinkedIn"
               >
                 <Linkedin className="w-5 h-5" />
               </a>
               <a
-                href="#"
+                href="https://www.instagram.com/am.capital.fr"
                 className="text-gray-400 hover:text-[#e90] transition-colors"
                 aria-label="Instagram"
               >

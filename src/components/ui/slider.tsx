@@ -76,7 +76,7 @@ const Slider = React.forwardRef<HTMLInputElement, SliderProps>(
           {/* Thumb personnalisé */}
           <div
             className={cn(
-              "absolute top-1/2 transform -translate-y-1/2 -translate-x-1/2 w-5 h-5 bg-white border-3 border-blue-600 rounded-full shadow-lg transition-all duration-200",
+              "absolute top-1/2 transform -translate-y-1/2 -translate-x-1/2 w-5 h-5 bg-white border-3  rounded-full shadow-lg transition-all duration-200",
               !disabled && "hover:scale-110 hover:shadow-xl",
               disabled && "opacity-50 cursor-not-allowed"
             )}
