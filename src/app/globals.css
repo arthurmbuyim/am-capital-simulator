@@ -1,26 +1,61 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/*@layer base {
+  * {
+    @apply border-gray-200;
+  }
+  body {
+    @apply bg-white text-gray-900 antialiased;
+    margin: 0;
+    font-family: system-ui, sans-serif;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
+@layer components {
+  .custom-slider {
+    @apply w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer;
+  }
+
+  .custom-slider::-webkit-slider-thumb {
+    @apply appearance-none h-5 w-5 rounded-full bg-blue-600 cursor-pointer shadow-lg;
+  }
+
+  .custom-slider::-moz-range-thumb {
+    @apply h-5 w-5 rounded-full bg-blue-600 cursor-pointer border-none shadow-lg;
+  }
+
+  .custom-slider:focus {
+    @apply outline-none ring-2 ring-blue-500 ring-offset-2;
+  }
+
+  .fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
+
+  .slide-in {
+    animation: slide-in 0.3s ease-out;
+  }
+
+  @keyframes fade-in {
+    from { 
+      opacity: 0; 
+      transform: translateY(10px); 
+    }
+    to { 
+      opacity: 1; 
+      transform: translateY(0); 
+    }
+  }
+
+  @keyframes slide-in {
+    from { 
+      transform: translateX(-100%); 
+    }
+    to { 
+      transform: translateX(0); 
+    }
+  }
+}*/
