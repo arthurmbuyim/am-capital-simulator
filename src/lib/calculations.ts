@@ -2,12 +2,29 @@ import { SimulationData, CalculationResult, RentDataResponse, AirbnbDataResponse
 import { FEES, INTEREST_RATES, AIRBNB_MULTIPLIERS, ROOM_COEFFICIENTS, CITIES_DATA } from './constants';
 
 /**
+ * Interface pour les données API brutes
+ */
+interface ApiData {
+  monthlyRent?: number;
+  monthlyRevenue?: number;
+  pricePerSqm?: number;
+  nightlyRate?: number;
+  occupancyRate?: number;
+  dataSource?: string;
+  marketTrends?: any;
+  fees?: any;
+  seasonalRevenues?: any[];
+  totalMonthlyRent?: number;
+  netMonthlyRevenue?: number;
+}
+
+/**
  * Calcule tous les indicateurs de rentabilité d'un investissement immobilier
+ * Version améliorée pour utiliser les données API
  */
 export function calculateInvestmentReturns(
   simulation: SimulationData,
-  rentData?: RentDataResponse,
-  airbnbData?: AirbnbDataResponse
+  apiData?: ApiData | RentDataResponse | AirbnbDataResponse
 ): CalculationResult {
   // Calcul des coûts initiaux
   const notaryFees = simulation.price * FEES.NOTARY_RATE;
@@ -19,35 +36,77 @@ export function calculateInvestmentReturns(
   );
   const totalCosts = simulation.price + notaryFees + commissionFees + architectFees;
 
-  // Calcul des revenus locatifs
+  // Calcul des revenus locatifs avec priorité aux données API
   let monthlyRent: number;
+  let dataSource = 'local'; // Pour tracer l'origine des données
   
-  if (simulation.exploitationType === 'short' && airbnbData) {
-    monthlyRent = airbnbData.monthlyRevenue;
-  } else if (rentData) {
-    monthlyRent = rentData.rentPerSqm * simulation.surface;
-  } else {
-    // Fallback sur données locales
-    const cityData = CITIES_DATA[simulation.city.toLowerCase()] || CITIES_DATA['paris'];
-    const roomCoeff = ROOM_COEFFICIENTS[simulation.rooms];
-    const baseRent = cityData.rentPerSqm * simulation.surface * roomCoeff;
+  if (apiData) {
+    console.log('Données API disponibles:', apiData);
     
     if (simulation.exploitationType === 'short') {
-      monthlyRent = baseRent * AIRBNB_MULTIPLIERS.BASE * AIRBNB_MULTIPLIERS.OCCUPANCY_RATE;
+      // Pour Airbnb, utiliser les revenus de l'API
+      if ('monthlyRevenue' in apiData && apiData.monthlyRevenue) {
+        monthlyRent = apiData.monthlyRevenue;
+        dataSource = 'api-airbnb';
+        console.log('Utilisation revenus Airbnb API:', monthlyRent);
+      } else if ('netMonthlyRevenue' in apiData && apiData.netMonthlyRevenue) {
+        monthlyRent = apiData.netMonthlyRevenue;
+        dataSource = 'api-airbnb-net';
+        console.log('Utilisation revenus nets Airbnb API:', monthlyRent);
+      } else {
+        // Fallback sur calcul local pour Airbnb
+        monthlyRent = calculateLocalShortTermRent(simulation);
+        console.log('Fallback calcul local Airbnb:', monthlyRent);
+      }
     } else {
-      monthlyRent = baseRent;
+      // Pour location longue durée
+      if ('totalMonthlyRent' in apiData && apiData.totalMonthlyRent) {
+        monthlyRent = apiData.totalMonthlyRent;
+        dataSource = 'api-rent';
+        console.log('Utilisation loyer total API:', monthlyRent);
+      } else if ('monthlyRent' in apiData && apiData.monthlyRent) {
+        monthlyRent = apiData.monthlyRent;
+        dataSource = 'api-rent-base';
+        console.log('Utilisation loyer mensuel API:', monthlyRent);
+      } else if ('rentPerSqm' in apiData && apiData.rentPerSqm) {
+        monthlyRent = apiData.rentPerSqm * simulation.surface;
+        dataSource = 'api-rent-calculated';
+        console.log('Calcul basé sur prix/m² API:', monthlyRent);
+      } else {
+        // Fallback sur calcul local
+        monthlyRent = calculateLocalLongTermRent(simulation);
+        console.log('Fallback calcul local location longue:', monthlyRent);
+      }
     }
+  } else {
+    // Pas de données API, utilisation du calcul local
+    if (simulation.exploitationType === 'short') {
+      monthlyRent = calculateLocalShortTermRent(simulation);
+    } else {
+      monthlyRent = calculateLocalLongTermRent(simulation);
+    }
+    console.log('Calcul local (pas de données API):', monthlyRent);
+  }
+
+  // Ajustement des charges pour Airbnb si données API disponibles
+  let additionalFees = 0;
+  if (simulation.exploitationType === 'short' && apiData && 'fees' in apiData && apiData.fees) {
+    // Si on a des frais spécifiques Airbnb de l'API
+    additionalFees = (apiData.fees.total || 0) / 12; // Mensualiser si nécessaire
+    console.log('Frais Airbnb supplémentaires:', additionalFees);
   }
 
   // Calcul des charges mensuelles
   const managementFees = monthlyRent * FEES.MANAGEMENT_RATE;
-  const vacancyLoss = monthlyRent * FEES.VACANCY_RATE;
+  const vacancyLoss = simulation.exploitationType === 'long' 
+    ? monthlyRent * FEES.VACANCY_RATE 
+    : 0; // Pas de vacance pour Airbnb (déjà dans le taux d'occupation)
   const monthlyInsurance = FEES.INSURANCE_ANNUAL / 12;
   const monthlyPropertyTax = (simulation.price * FEES.PROPERTY_TAX_RATE) / 12;
   const monthlyMaintenance = (simulation.price * FEES.MAINTENANCE_RATE) / 12;
   
   const monthlyCharges = managementFees + vacancyLoss + monthlyInsurance + 
-                        monthlyPropertyTax + monthlyMaintenance;
+                        monthlyPropertyTax + monthlyMaintenance + additionalFees;
   
   const taxesAndInsurance = monthlyInsurance + monthlyPropertyTax;
 
@@ -67,6 +126,9 @@ export function calculateInvestmentReturns(
   const roi = ((monthlyRent - monthlyCharges - monthlyLoanPayment) * 12 / initialEquity) * 100;
   const paybackPeriod = initialEquity / Math.max(1, (monthlyRent - monthlyCharges) * 12); // en années
 
+  // Log final pour debug
+  console.log(`Calcul final - Source: ${dataSource}, Loyer: ${monthlyRent}€, Rendement brut: ${grossReturn.toFixed(2)}%`);
+
   return {
     monthlyRent: Math.round(monthlyRent),
     grossReturn: Math.round(grossReturn * 100) / 100,
@@ -83,6 +145,23 @@ export function calculateInvestmentReturns(
     roi: Math.round(roi * 100) / 100,
     paybackPeriod: Math.round(paybackPeriod * 100) / 100,
   };
+}
+
+/**
+ * Fonction helper pour calculer le loyer en location longue durée (fallback local)
+ */
+function calculateLocalLongTermRent(simulation: SimulationData): number {
+  const cityData = CITIES_DATA[simulation.city.toLowerCase()] || CITIES_DATA['paris'];
+  const roomCoeff = ROOM_COEFFICIENTS[simulation.rooms as keyof typeof ROOM_COEFFICIENTS] || 1;
+  return cityData.rentPerSqm * simulation.surface * roomCoeff;
+}
+
+/**
+ * Fonction helper pour calculer le loyer en location courte durée (fallback local)
+ */
+function calculateLocalShortTermRent(simulation: SimulationData): number {
+  const longTermRent = calculateLocalLongTermRent(simulation);
+  return longTermRent * AIRBNB_MULTIPLIERS.BASE * AIRBNB_MULTIPLIERS.OCCUPANCY_RATE;
 }
 
 /**
@@ -129,10 +208,15 @@ export function calculateLongTermRent(
   city: string,
   surface: number,
   rooms: string,
-  rentData?: RentDataResponse
+  rentData?: RentDataResponse | ApiData
 ): number {
   if (rentData) {
-    return rentData.rentPerSqm * surface;
+    if ('totalMonthlyRent' in rentData && rentData.totalMonthlyRent) {
+      return rentData.totalMonthlyRent;
+    }
+    if ('rentPerSqm' in rentData && rentData.rentPerSqm) {
+      return rentData.rentPerSqm * surface;
+    }
   }
   
   // Fallback sur données locales
@@ -149,10 +233,15 @@ export function calculateShortTermRent(
   city: string,
   surface: number,
   rooms: string,
-  airbnbData?: AirbnbDataResponse
+  airbnbData?: AirbnbDataResponse | ApiData
 ): number {
   if (airbnbData) {
-    return airbnbData.monthlyRevenue;
+    if ('monthlyRevenue' in airbnbData && airbnbData.monthlyRevenue) {
+      return airbnbData.monthlyRevenue;
+    }
+    if ('netMonthlyRevenue' in airbnbData && airbnbData.netMonthlyRevenue) {
+      return airbnbData.netMonthlyRevenue;
+    }
   }
   
   // Fallback sur estimation basée sur la location longue
@@ -187,8 +276,8 @@ export interface ComparisonResult {
 
 export function calculateComparison(
   simulation: SimulationData,
-  longTermData?: RentDataResponse,
-  shortTermData?: AirbnbDataResponse
+  longTermData?: RentDataResponse | ApiData,
+  shortTermData?: AirbnbDataResponse | ApiData
 ): ComparisonResult {
   // Calcul pour location longue durée
   const longTermSimulation = { ...simulation, exploitationType: 'long' as const };
@@ -196,7 +285,7 @@ export function calculateComparison(
   
   // Calcul pour location courte durée
   const shortTermSimulation = { ...simulation, exploitationType: 'short' as const };
-  const shortTermResults = calculateInvestmentReturns(shortTermSimulation, undefined, shortTermData);
+  const shortTermResults = calculateInvestmentReturns(shortTermSimulation, shortTermData);
   
   // Calcul des différences
   const monthlyRentDiff = shortTermResults.monthlyRent - longTermResults.monthlyRent;

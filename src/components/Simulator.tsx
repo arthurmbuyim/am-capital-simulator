@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Calculator, Users, TrendingUp, Home, Calendar, MapPin } from 'lucide-react';
+import { Calculator, Users, TrendingUp, Home, Calendar, MapPin, Globe, Database, AlertCircle } from 'lucide-react';
 import { SimulationData, CalculationResult } from '@/src/lib/types';
 import { calculateInvestmentReturns, validateSimulationData } from '@/src/lib/calculations';
 import { CITIES_DATA, ROOM_TYPES, EXPLOITATION_TYPES } from '@/src/lib/constants';
@@ -13,27 +13,162 @@ interface SimulatorProps {
   setSimulationData: (data: SimulationData) => void;
 }
 
+interface ApiData {
+  monthlyRent?: number;
+  monthlyRevenue?: number;
+  pricePerSqm?: number;
+  nightlyRate?: number;
+  occupancyRate?: number;
+  dataSource?: string;
+  marketTrends?: any;
+  fees?: any;
+  seasonalRevenues?: any[];
+}
+
+// Composant indicateur de source de données
+const DataSourceIndicator: React.FC<{
+  source?: string;
+  loading?: boolean;
+  error?: string;
+}> = ({ source, loading, error }) => {
+  if (loading) {
+    return (
+      <div className="flex items-center space-x-2 text-blue-600 text-sm">
+        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+        <span>Récupération des données du marché...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center space-x-2 text-orange-600 text-sm">
+        <AlertCircle className="w-4 h-4" />
+        <span>Données locales utilisées</span>
+      </div>
+    );
+  }
+
+  const isApiData = source === 'api' || source === 'airdna';
+  
+  return (
+    <div className="flex items-center space-x-2 text-sm">
+      {isApiData ? (
+        <>
+          <Globe className="w-4 h-4 text-green-600" />
+          <span className="text-green-600">Données temps réel</span>
+        </>
+      ) : (
+        <>
+          <Database className="w-4 h-4 text-blue-600" />
+          <span className="text-blue-600">Données de référence</span>
+        </>
+      )}
+    </div>
+  );
+};
+
 const Simulator: React.FC<SimulatorProps> = ({ simulationData, setSimulationData }) => {
   const [activeTab, setActiveTab] = useState('simulation');
   const [results, setResults] = useState<CalculationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [apiData, setApiData] = useState<ApiData | null>(null);
+  const [apiLoading, setApiLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
-  // Debounced calculation
-  const calculateResults = useCallback(
-    (() => {
-      let timeoutId: NodeJS.Timeout;
-      return (data: SimulationData) => {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => {
-          performCalculation(data);
-        }, 500);
-      };
-    })(),
-    []
-  );
+  // Fonction pour récupérer les données depuis les APIs
+  const fetchRentData = useCallback(async (
+    city: string,
+    rooms: string,
+    surface: number,
+    exploitationType: 'long' | 'short'
+  ) => {
+    try {
+      setApiLoading(true);
+      setApiError(null);
+      
+      // Déterminer quelle API appeler
+      const endpoint = exploitationType === 'long' 
+        ? '/api/rent-data' 
+        : '/api/airbnb-data';
+      
+      // Construire l'URL avec les paramètres
+      const params = new URLSearchParams({
+        city: city.toLowerCase(),
+        rooms: rooms.toLowerCase(),
+        surface: surface.toString()
+      });
+      
+      console.log(`Appel API: ${endpoint}?${params.toString()}`);
+      
+      // Appel API
+      const response = await fetch(`${endpoint}?${params}`);
+      
+      if (!response.ok) {
+        throw new Error('Erreur lors de la récupération des données');
+      }
+      
+      const data = await response.json();
+      console.log('Données reçues de l\'API:', data);
+      
+      // Mettre à jour les données API
+      if (exploitationType === 'long') {
+        // Données location longue durée
+        setApiData({
+          monthlyRent: data.totalMonthlyRent,
+          pricePerSqm: data.pricePerSqm,
+          dataSource: data.dataSource,
+          marketTrends: data.marketTrends
+        });
+      } else {
+        // Données Airbnb
+        setApiData({
+          monthlyRevenue: data.monthlyRevenue || data.netMonthlyRevenue,
+          nightlyRate: data.nightlyRate,
+          occupancyRate: data.occupancyRate,
+          fees: data.fees,
+          seasonalRevenues: data.seasonalRevenues,
+          dataSource: data.dataSource
+        });
+      }
+      
+      console.log(`Données récupérées depuis: ${data.dataSource}`);
+      
+    } catch (err) {
+      console.error('Erreur API:', err);
+      setApiError('Utilisation des données locales');
+      // Les calculs utiliseront les valeurs par défaut
+      setApiData(null);
+    } finally {
+      setApiLoading(false);
+    }
+  }, []);
 
-  const performCalculation = async (data: SimulationData) => {
+  // useEffect pour appeler l'API quand les paramètres changent
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (simulationData.city && simulationData.rooms) {
+        fetchRentData(
+          simulationData.city,
+          simulationData.rooms,
+          simulationData.surface,
+          simulationData.exploitationType
+        );
+      }
+    }, 500); // Debounce de 500ms
+    
+    return () => clearTimeout(timer);
+  }, [
+    simulationData.city,
+    simulationData.rooms,
+    simulationData.surface,
+    simulationData.exploitationType,
+    fetchRentData
+  ]);
+
+  // Fonction de calcul modifiée pour utiliser les données API
+  const performCalculation = useCallback(async (data: SimulationData) => {
     setLoading(true);
     setError(null);
 
@@ -45,23 +180,51 @@ const Simulator: React.FC<SimulatorProps> = ({ simulationData, setSimulationData
         return;
       }
 
-      // Simulation d'appel API
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Préparer les données avec les valeurs de l'API si disponibles
+      let enhancedData = { ...data };
+      
+      // Si on a des données API, les utiliser pour enrichir le calcul
+      if (apiData) {
+        if (data.exploitationType === 'long' && apiData.monthlyRent) {
+          // Pour location longue durée, on peut ajuster le calcul avec le loyer réel
+          console.log('Utilisation du loyer API:', apiData.monthlyRent);
+          // Note: Vous pouvez passer ces données à calculateInvestmentReturns
+          // ou modifier la fonction pour les prendre en compte
+        } else if (data.exploitationType === 'short' && apiData.monthlyRevenue) {
+          // Pour Airbnb, utiliser les revenus de l'API
+          console.log('Utilisation des revenus Airbnb API:', apiData.monthlyRevenue);
+        }
+      }
 
-      // Calcul avec données locales (fallback)
-      const calculationResult = calculateInvestmentReturns(data);
+      // Calcul avec les données (enrichies par l'API si disponible)
+      const calculationResult = calculateInvestmentReturns(enhancedData, apiData || undefined);
       setResults(calculationResult);
+      
     } catch (err) {
       console.error('Erreur de calcul:', err);
       setError('Erreur lors du calcul. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiData]);
+
+  // Debounced calculation
+  const calculateResults = useCallback(
+    (() => {
+      let timeoutId: NodeJS.Timeout;
+      return (data: SimulationData) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          performCalculation(data);
+        }, 600); // Un peu plus de délai pour attendre les données API
+      };
+    })(),
+    [performCalculation]
+  );
 
   useEffect(() => {
     calculateResults(simulationData);
-  }, [simulationData, calculateResults]);
+  }, [simulationData, calculateResults, apiData]); // Ajout de apiData comme dépendance
 
   const updateSimulationData = (updates: Partial<SimulationData>) => {
     setSimulationData({ ...simulationData, ...updates });
@@ -78,6 +241,15 @@ const Simulator: React.FC<SimulatorProps> = ({ simulationData, setSimulationData
           <p className="text-lg text-am-navy-text max-w-2xl mx-auto">
             Configurez votre projet et obtenez une analyse complète en temps réel
           </p>
+        </div>
+
+        {/* Indicateur de source de données */}
+        <div className="bg-white p-3 rounded-lg shadow-sm mb-4 max-w-md mx-auto">
+          <DataSourceIndicator 
+            source={apiData?.dataSource} 
+            loading={apiLoading} 
+            error={apiError || undefined} 
+          />
         </div>
 
         {/* Navigation Tabs */}
@@ -253,6 +425,30 @@ const Simulator: React.FC<SimulatorProps> = ({ simulationData, setSimulationData
                     ))}
                   </select>
                 </div>
+
+                {/* Affichage des données API si disponibles */}
+                {apiData && (
+                  <div className="bg-blue-50 p-3 rounded-lg text-sm">
+                    <div className="font-medium text-blue-900 mb-2">Données de marché</div>
+                    {simulationData.exploitationType === 'long' && apiData.monthlyRent && (
+                      <div className="text-blue-700">
+                        Loyer estimé : {apiData.monthlyRent.toLocaleString('fr-FR')}€/mois
+                      </div>
+                    )}
+                    {simulationData.exploitationType === 'short' && apiData.monthlyRevenue && (
+                      <>
+                        <div className="text-blue-700">
+                          Revenus Airbnb : {apiData.monthlyRevenue.toLocaleString('fr-FR')}€/mois
+                        </div>
+                        {apiData.occupancyRate && (
+                          <div className="text-blue-700">
+                            Taux d'occupation : {apiData.occupancyRate}%
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
