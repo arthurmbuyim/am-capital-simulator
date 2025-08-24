@@ -2,7 +2,23 @@
 
 import { ChevronRight, Download, AlertCircle, TrendingUp, DollarSign, Home } from 'lucide-react';
 import { CalculationResult, SimulationData } from '@/src/lib/types';
-import { formatCurrency, formatPercentage } from '@/src/lib/calculations';
+//import { formatCurrency, formatPercentage } from '@/src/lib/calculations';
+import PDFPreview from './PDFPreview';
+import { useState } from 'react';
+
+// Fonctions utilitaires locales
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function formatPercentage(rate: number, decimals: number = 2): string {
+  return `${rate.toFixed(decimals)}%`;
+}
 
 interface ResultsPanelProps {
   results: CalculationResult | null;
@@ -17,9 +33,12 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
   loading, 
   error 
 }) => {
-  const handleGeneratePDF = () => {
-    // TODO: Implémenter la génération de PDF
-    console.log('Génération PDF...');
+  const [showPDFPreview, setShowPDFPreview] = useState(false);
+
+  const handleShowPDFPreview = () => {
+    if (results) {
+      setShowPDFPreview(true);
+    }
   };
 
   const getReturnColor = (returnRate: number) => {
@@ -40,12 +59,12 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
     <div className="bg-white rounded-xl shadow-lg p-6 h-fit sticky top-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-2xl font-bold text-am-navy-text">
+        <h3 className="text-2xl font-bold text-gray-900">
           Résultats en temps réel
         </h3>
         {loading && (
-          <div className="flex items-center space-x-2 text-am-navy-text">
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-600"></div>
+          <div className="flex items-center space-x-2 text-blue-600">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
             <span className="text-sm">Calcul...</span>
           </div>
         )}
@@ -80,15 +99,15 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
           {/* Main Return Rate */}
           <div className="text-center">
             <div className={`inline-flex items-center space-x-2 px-4 py-2 rounded-full mb-3 ${getReturnColor(results.grossReturn)}`}>
-              <TrendingUp className="w-4 h-4 text-[#e90]" />
-              <span className="text-sm font-medium text-am-navy-text">
+              <TrendingUp className="w-4 h-4" />
+              <span className="text-sm font-medium">
                 {getReturnLabel(results.grossReturn)}
               </span>
             </div>
-            <div className="text-4xl font-bold text-am-navy mb-2">
+            <div className="text-4xl font-bold text-gray-900 mb-2">
               {formatPercentage(results.grossReturn)}
             </div>
-            <p className="text-am-navy-light">Rendement brut annuel</p>
+            <p className="text-gray-600">Rendement brut annuel</p>
           </div>
 
           {/* Key Metrics Grid */}
@@ -116,20 +135,20 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
           {/* Detailed Metrics */}
           <div className="space-y-3">
             <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-              <span className="text-am-navy-text">Rendement net</span>
-              <span className="font-semibold text-[#e90]">
+              <span className="text-gray-700">Rendement net</span>
+              <span className="font-semibold text-gray-900">
                 {formatPercentage(results.netReturn)}
               </span>
             </div>
             <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-              <span className="am-navy-text">ROI sur fonds propres</span>
-              <span className="font-semibold text-[#e90]">
+              <span className="text-gray-700">ROI sur fonds propres</span>
+              <span className="font-semibold text-gray-900">
                 {formatPercentage(results.roi)}
               </span>
             </div>
             <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-              <span className="am-navy-text">Temps de retour</span>
-              <span className="font-semibold text-[#e90]">
+              <span className="text-gray-700">Temps de retour</span>
+              <span className="font-semibold text-gray-900">
                 {results.paybackPeriod.toFixed(1)} ans
               </span>
             </div>
@@ -137,11 +156,11 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
 
           {/* Investment Summary */}
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100">
-            <h4 className="font-semibold text-am-navy-text mb-3 flex items-center">
-              <TrendingUp className="w-4 h-4 mr-2 text-[#e90]" />
+            <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+              <TrendingUp className="w-4 h-4 mr-2 text-blue-600" />
               Résumé de l'investissement
             </h4>
-            <div className="text-sm text-am-navy-text space-y-2">
+            <div className="text-sm text-gray-700 space-y-2">
               <div className="flex justify-between">
                 <span>Bien:</span>
                 <span className="font-medium">
@@ -181,21 +200,21 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
           {/* Action Buttons */}
           <div className="space-y-3">
             <button
-              onClick={handleGeneratePDF}
-              className="w-full bg-gradient-to-r from-am-navy to-am-navy-light hover:from-am-navy hover:to-am-navy hover:text-[#e90] text-white py-3 px-6 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl"
+              onClick={handleShowPDFPreview}
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-3 px-6 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl"
             >
               <Download className="w-5 h-5" />
               <span>Générer le rapport PDF</span>
             </button>
             
-            <button className="w-full bg-white hover:bg-gray-50 text-am-navy-text border-2 border-gray-200 hover:border-gray-300 py-3 px-6 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center space-x-2">
+            <button className="w-full bg-white hover:bg-gray-50 text-gray-700 border-2 border-gray-200 hover:border-gray-300 py-3 px-6 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center space-x-2">
               <span>Programmer un rendez-vous</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
           {/* Disclaimer */}
-          <div className="text-xs text-am-navy-text bg-gray-50 p-3 rounded-lg">
+          <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
             <p>
               <strong>Avertissement:</strong> Ces calculs sont basés sur des estimations 
               et des données de marché. Les résultats réels peuvent varier selon 
@@ -203,6 +222,16 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
             </p>
           </div>
         </div>
+      )}
+
+      {/* PDF Preview Modal */}
+      {results && (
+        <PDFPreview
+          simulationData={simulationData}
+          results={results}
+          isOpen={showPDFPreview}
+          onClose={() => setShowPDFPreview(false)}
+        />
       )}
 
       {/* Empty State */}

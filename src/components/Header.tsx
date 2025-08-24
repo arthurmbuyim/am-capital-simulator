@@ -32,7 +32,7 @@ const Header = () => {
             <a href="https://www.am-capital.fr/notre-expertise" className="text-am-navy-text hover:text-[#e90] transition-colors">
               Services
             </a>
-            <a href="#c" className="text-am-navy-text hover:text-[#e90] transition-colors">
+            <a href="#contact" className="text-am-navy-text hover:text-[#e90] transition-colors">
               Contact
             </a>
           </nav>
