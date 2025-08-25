@@ -73,8 +73,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculer le prix de base (récupération depuis l'API rent-data)
+    // Utiliser une URL relative pour que ça fonctionne en local et en production
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
+                    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+    
     const baseRentResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/rent-data?city=${city}&rooms=${rooms}&surface=${surface}`
+      `${baseUrl}/api/rent-data?city=${city}&rooms=${rooms}&surface=${surface}`
     );
     
     let baseMonthlyRent = 1750; // Valeur par défaut
