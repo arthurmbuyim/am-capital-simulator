@@ -72,14 +72,14 @@ const Header = () => {
               Simulateur
             </a>
             <a
-              href="#about"
+              href="https://www.am-capital.fr/qui-sommes-nous"
               className="block px-3 py-2 text-gray-600 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
               À propos
             </a>
             <a
-              href="#services"
+              href="https://www.am-capital.fr/notre-expertise"
               className="block px-3 py-2 text-gray-600 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
