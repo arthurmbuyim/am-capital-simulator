@@ -1,10 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Import des données locales pour éviter le fetch interne
+const ROOM_COEFFICIENTS: Record<string, number> = {
+  'studio': 1.39,
+  't2': 1.00,
+  't3': 0.81,
+  't4': 0.80
+};
+
+const CITY_PRICES: Record<string, number> = {
+  'paris': 10500,
+  'lyon': 4800,
+  'marseille': 3200,
+  'toulouse': 3500,
+  'nice': 5200,
+  'nantes': 3800,
+  'montpellier': 3900,
+  'strasbourg': 3300,
+  'bordeaux': 4500,
+  'lille': 3400,
+  'rennes': 3600,
+  'reims': 2800,
+  'saint-etienne': 1500,
+  'toulon': 3000,
+  'grenoble': 3100,
+  'dijon': 2600,
+  'angers': 3200,
+  'nimes': 2400,
+  'villeurbanne': 3700,
+  'clermont-ferrand': 2200,
+  'cannes': 6800,
+  'antibes': 5500,
+  'biarritz': 6200,
+  'la-rochelle': 3900,
+  'saint-malo': 4100,
+  'deauville': 5800,
+  'arcachon': 5400
+};
+
 // Cache en mémoire
 const cache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
 
-// Multiplicateurs Airbnb par ville (basés sur l'attractivité touristique)
+// Multiplicateurs Airbnb par ville
 const AIRBNB_MULTIPLIERS: Record<string, number> = {
   'paris': 3.5,
   'lyon': 2.8,
@@ -25,7 +63,7 @@ const AIRBNB_MULTIPLIERS: Record<string, number> = {
   'la-rochelle': 3.0
 };
 
-// Taux d'occupation moyens par ville (en %)
+// Taux d'occupation moyens par ville
 const OCCUPANCY_RATES: Record<string, number> = {
   'paris': 75,
   'lyon': 68,
@@ -40,7 +78,7 @@ const OCCUPANCY_RATES: Record<string, number> = {
   'default': 70
 };
 
-// Saisonnalité par mois (multiplicateur)
+// Saisonnalité par mois
 const SEASONALITY = [
   0.7,  // Janvier
   0.75, // Février
@@ -55,6 +93,14 @@ const SEASONALITY = [
   0.8,  // Novembre
   0.9   // Décembre
 ];
+
+// Fonction helper pour calculer le loyer de base
+function calculateBaseMonthlyRent(city: string, rooms: string, surface: number): number {
+  const pricePerSqm = CITY_PRICES[city] || 3500;
+  const coefficient = ROOM_COEFFICIENTS[rooms] || 1;
+  const monthlyRent = Math.round((pricePerSqm / 20) * coefficient);
+  return monthlyRent * surface;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -72,20 +118,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(cached.data);
     }
 
-    // Calculer le prix de base (récupération depuis l'API rent-data)
-    // Utiliser une URL relative pour que ça fonctionne en local et en production
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
-                    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
-    
-    const baseRentResponse = await fetch(
-      `${baseUrl}/api/rent-data?city=${city}&rooms=${rooms}&surface=${surface}`
-    );
-    
-    let baseMonthlyRent = 1750; // Valeur par défaut
-    if (baseRentResponse.ok) {
-      const baseData = await baseRentResponse.json();
-      baseMonthlyRent = baseData.totalMonthlyRent;
-    }
+    // Calculer le loyer de base localement (sans fetch)
+    const baseMonthlyRent = calculateBaseMonthlyRent(city, rooms, surface);
 
     // Obtenir le multiplicateur Airbnb pour la ville
     const multiplier = AIRBNB_MULTIPLIERS[city] || 3.0;
@@ -164,7 +198,7 @@ export async function GET(request: NextRequest) {
       marketInsights: {
         competitionLevel: 'medium',
         averageRating: 4.3,
-        bookingWindow: 21, // jours à l'avance
+        bookingWindow: 21,
         topAmenities: ['wifi', 'cuisine équipée', 'lave-linge'],
         priceOptimization: 'dynamic pricing recommended'
       }
