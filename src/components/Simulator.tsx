@@ -147,19 +147,19 @@ const Simulator: React.FC<SimulatorProps> = ({ simulationData, setSimulationData
 
   // useEffect pour appeler l'API quand les paramètres changent
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (simulationData.city && simulationData.rooms) {
-        fetchRentData(
-          simulationData.city,
-          simulationData.rooms,
-          simulationData.surface,
-          simulationData.exploitationType
-        );
-      }
-    }, 500); // Debounce de 500ms
-    
-    return () => clearTimeout(timer);
-  }, [
+  const timer = setTimeout(() => {
+    if (simulationData.city && simulationData.rooms) {
+      fetchRentData(
+        simulationData.city,
+        simulationData.rooms,
+        simulationData.surface,
+        simulationData.exploitationType
+      );
+    }
+  }, 200); // Au lieu de 500ms
+  
+  return () => clearTimeout(timer);
+}, [
     simulationData.city,
     simulationData.rooms,
     simulationData.surface,
@@ -168,63 +168,42 @@ const Simulator: React.FC<SimulatorProps> = ({ simulationData, setSimulationData
   ]);
 
   // Fonction de calcul modifiée pour utiliser les données API
-  const performCalculation = useCallback(async (data: SimulationData) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Validation des données
-      const validationErrors = validateSimulationData(data);
-      if (validationErrors.length > 0) {
-        setError(validationErrors.join(', '));
-        return;
-      }
-
-      // Préparer les données avec les valeurs de l'API si disponibles
-      let enhancedData = { ...data };
-      
-      // Si on a des données API, les utiliser pour enrichir le calcul
-      if (apiData) {
-        if (data.exploitationType === 'long' && apiData.monthlyRent) {
-          // Pour location longue durée, on peut ajuster le calcul avec le loyer réel
-          console.log('Utilisation du loyer API:', apiData.monthlyRent);
-          // Note: Vous pouvez passer ces données à calculateInvestmentReturns
-          // ou modifier la fonction pour les prendre en compte
-        } else if (data.exploitationType === 'short' && apiData.monthlyRevenue) {
-          // Pour Airbnb, utiliser les revenus de l'API
-          console.log('Utilisation des revenus Airbnb API:', apiData.monthlyRevenue);
-        }
-      }
-
-      // Calcul avec les données (enrichies par l'API si disponible)
-      const calculationResult = calculateInvestmentReturns(enhancedData, apiData || undefined);
-      setResults(calculationResult);
-      
-    } catch (err) {
-      console.error('Erreur de calcul:', err);
-      setError('Erreur lors du calcul. Veuillez réessayer.');
-    } finally {
-      setLoading(false);
+  const performLocalCalculation = useCallback((data: SimulationData) => {
+  try {
+    // Validation
+    const validationErrors = validateSimulationData(data);
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join(', '));
+      return;
     }
-  }, [apiData]);
+    
+    // Calcul immédiat avec données locales ou API si déjà disponibles
+    const result = calculateInvestmentReturns(data, apiData || undefined);
+    setResults(result);
+    setError(null);
+  } catch (err) {
+    console.error('Erreur de calcul:', err);
+    setError('Erreur lors du calcul. Veuillez réessayer.');
+  }
+}, [apiData]);
 
   // Debounced calculation
-  const calculateResults = useCallback(
-    (() => {
-      let timeoutId: NodeJS.Timeout;
-      return (data: SimulationData) => {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => {
-          performCalculation(data);
-        }, 600); // Un peu plus de délai pour attendre les données API
-      };
-    })(),
-    [performCalculation]
-  );
+  /* const calculateResults = useCallback(
+  (() => {
+    let timeoutId: NodeJS.Timeout;
+    return (data: SimulationData) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        performCalculation(data);
+      }, 100); // Au lieu de 600ms
+    };
+  })(),
+  [performCalculation]
+); */
 
   useEffect(() => {
-    calculateResults(simulationData);
-  }, [simulationData, calculateResults, apiData]); // Ajout de apiData comme dépendance
+  performLocalCalculation(simulationData);
+}, [simulationData, performLocalCalculation]); 
 
   const updateSimulationData = (updates: Partial<SimulationData>) => {
     setSimulationData({ ...simulationData, ...updates });
